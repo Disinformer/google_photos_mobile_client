@@ -1,104 +1,86 @@
-# google_photos_mobile_client
+#### Forked from original repo https://github.com/xob0t/gphotos_mobile_client
 
-Very basic, reverse engineered, Google Photos mobile API client.  
-Made for uploading files as Pixel XL without relying on a physical device/emulator.
+## Added features:
+- Argument `--path` now is optional and may be provided by env `SOURCE_PATH`
+- Use argument `--run-in-loop` to watch for source path in cycle.
+- Use argument `--attempt-timeout` or env `ATTEMPT_TIMEOUT` to set interval in seconds between path processing. Default value is 30
+
+## Install with git and pip:
+
+```bash
+pip install git+https://github.com/Disinformer/gphotos_mobile_client@feat/run-in-loop
+```
 
 ---
+## Docker usage
+Main target of this fork is use this app as background process.
+Now it's possible to run app in docker container. For more convenient management `docker-compose` is preferred.
 
-## Set Up
-
-Install with git and pip:
-
-```bash
-pip install git+https://github.com/xob0t/gphotos_mobile_client --force-reinstall
+Example of docker compose file: ``docker-compose.yml``
+```shell
+services:
+  gp-uploader:
+    container_name: gp-uploader
+    restart: always
+    image: disinformer/google-photos-unlim-uploader:latest
+    environment:
+      GP_AUTH_DATA: <your google credential string intercepted by HTTPToolKit>
+      SOURCE_PATH: /media_to_upload
+      ATTEMPT_TIMEOUT: 60
+    volumes:
+      - <source path to your files>:/media_to_upload
+    entrypoint:
+      - gp-upload 
+      - --run-in-loop
+      - --recursive
+      - --delete-from-host
 ```
+_Attention!_ Remove last line (`--delete-from-host`) if you do not want to delete source files. 
 
-OR download as zip and intall with pip:
+To run attached: `docker-compose up`
+To run in background: `docker-compose -d up`
+To stop: `docker-compose stop`
+To stop and remove containers: `docker-compose down`
 
-```bash
-pip install gphotos_mobile_client.zip
+
+You may upload to more than one account in parallel. Config services in a single `docker-compose.yml`:
+```shell
+services:
+  gp-uploader-1:
+    container_name: gp-uploader-account-one
+    restart: always
+    image: disinformer/google-photos-unlim-uploader:latest
+    environment:
+      GP_AUTH_DATA: <google account one credential>
+      SOURCE_PATH: /media_to_upload
+      ATTEMPT_TIMEOUT: 60
+    volumes:
+      - <path for account one>:/media_to_upload
+    entrypoint:
+      - gp-upload 
+      - --run-in-loop
+      - --recursive
+      
+  gp-uploader-2:
+    container_name: gp-uploader-account-two
+    restart: always
+    image: disinformer/google-photos-unlim-uploader:latest
+    environment:
+      GP_AUTH_DATA: <google account two credential>
+      SOURCE_PATH: /media_to_upload
+      ATTEMPT_TIMEOUT: 60
+    volumes:
+      - <path for account two>:/media_to_upload
+    entrypoint:
+      - gp-upload 
+      - --run-in-loop
+      - --recursive
 ```
-
-## Example Usage
-
-> [!NOTE]
-> If auth_data is omitted, `GP_AUTH_DATA` env variable will be used
-
-### Python Client
-
-```python
-from gpmc import Client
-
-path = "/path/to/media_file.jpg" # file or dir path
-auth_data = "androidId=216e583113f43c75&app=com.google.android.apps.photos&client_sig=34bb24c05e47e0aefa65a58a762171d9b613a680..."
+Or use separate files with content from the first example: `docker-compose-one.yml` & `docker-compose-two.yml`
+To run independently add `-f` and `-p`: `docker-compose -f docker-compose-one.yaml -p one up`
 
 
-client = Client(auth_data=auth_data)
-media_key = client.upload(target=path, progress=True)
-print(media_key)
 
-```
+---
+For other details about client application follow to original repo https://github.com/xob0t/gphotos_mobile_client
 
-### CLI
-
-```bash
-gp-upload "/path/to/media_file.jpg" --progress --auth_data "androidId=216e583113f43c75&app=com.google.android.apps.photos&client_sig=34bb24c05e47e0aefa65a58a762171d9b613a680..."
-```
-
-```text
-usage: gp-upload [-h] [--auth_data AUTH_DATA] [--progress] [--recursive] [--threads THREADS] [--force-upload] [--delete-from-host] [--timeout TIMEOUT] [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] path
-
-Google Photos mobile client.
-
-positional arguments:
-  path                  Path to the file or directory to upload.
-
-options:
-  -h, --help            show this help message and exit
-  --auth_data AUTH_DATA
-                        Google auth data for authentication. If not provided, `GP_AUTH_DATA` env variable will be used.
-  --progress            Display upload progress.
-  --recursive           Scan the directory recursively.
-  --threads THREADS     Number of threads to run uploads with. Defaults to 1.
-  --force-upload        Upload files regardless of their presence in Google Photos (determined by hash).
-  --delete-from-host    Delete uploaded files from source path.
-  --timeout TIMEOUT     Requests timeout, seconds. Defaults to 30.
-  --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
-                        Set the logging level (default: INFO)
-```
-
-## auth_data? Where Do I Get Mine?
-
-Below is a step by step instruction on how to accuire your Google account's mobile auth data in a simplest way possible.  
-You only need to do it once.
-
-1. Get a rooted android device or an emulator. Recommended Android version >=9
-2. Connect the device to your PC via ADB.
-3. Install [HTTP Toolkit](https://httptoolkit.com)
-4. In HTTP Toolkit, select Intercept - `Android Device via ADB`. Filter traffic with
-
-    ```text
-    contains(https://www.googleapis.com/auth/photos.native)
-    ```
-
-5. Open Google Photos app and login with your account.
-6. There should be a single request found.  
-   Copy request body as text.  
-   ![http_toolkit_tip](media/image.png)
-7. Now you've got yourself your auth_data! 🎉
-
-## Troubleshooting
-
-- __No Auth Request Intercepted__  
-  1. Log out of your Goolge account.
-  2. Log in again.
-  3. Try `Android App via Frida` interception method in HTTP Toolkit.
-
-- __403 Response Status__  
-  - Try intercepting Google Photos ReVanced. Patch it yourself or use a patched apk [https://github.com/j-hc/revanced-magisk-module/releases](https://github.com/j-hc/revanced-magisk-module/releases)  
-    It uses an alternative to google services, and the format of the auth request is a bit different.
-
-## My Other Google Photos Scripts And Tools
-
-- Disguse any file as media for GP to accept and store it: [https://github.com/xob0t/gp-file-hide](https://github.com/xob0t/gp-file-hide)
-- Manage library with bulk operations: [https://github.com/xob0t/Google-Photos-Toolkit](https://github.com/xob0t/Google-Photos-Toolkit)
