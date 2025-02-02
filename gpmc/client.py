@@ -1,11 +1,10 @@
-import time
-from typing import Optional, Literal, Iterable
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import signal
-
-import os
 import mimetypes
+import os
+import signal
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Optional, Literal, Iterable
 
 from rich.console import Group
 from rich.live import Live
@@ -176,7 +175,8 @@ class Client:
         files_to_upload = [file for path in target for file in self._search_for_media_files(path, recursive=recursive)]
 
         if not files_to_upload:
-            raise ValueError("No valid media files found to upload.")
+            self.logger.info("No files found in source path")
+            return dict()
 
         if len(files_to_upload) == 1:
             results = self._upload_single(files_to_upload[0], sha1_hash=sha1_hash, show_progress=show_progress, force_upload=force_upload)
@@ -225,12 +225,14 @@ class Client:
             files = [file for file in path.iterdir() if file.is_file()]
 
         if len(files) == 0:
-            raise ValueError("No files in the directory.")
+            self.logger.info("No files found in source path")
+            return []
 
         media_files = [file for file in files if any(mimetype_guess is not None and mimetype_guess.startswith(mimetype) for mimetype in self.valid_mimetypes if (mimetype_guess := mimetypes.guess_type(file)[0]) is not None)]
 
         if len(media_files) == 0:
-            raise ValueError("No files in the directory matched image or video mime types")
+            self.logger.info("No media files found in source path")
+            return []
 
         return media_files
 

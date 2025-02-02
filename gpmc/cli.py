@@ -1,7 +1,8 @@
 import argparse
+import time
 
-from .client import Client
 from .api_methods import DEFAULT_TIMEOUT
+from .client import Client
 
 
 def main():
@@ -14,10 +15,17 @@ def main():
     parser.add_argument("--force-upload", action="store_true", help="Upload files regardless of their presence in Google Photos (determined by hash).")
     parser.add_argument("--delete-from-host", action="store_true", help="Delete uploaded files from source path.")
     parser.add_argument("--timeout", type=int, default=30, help=f"Requests timeout, seconds. Defaults to {DEFAULT_TIMEOUT}.")
+    parser.add_argument("--attempt-timeout", type=int, default=30, help=f"Timeout between processing attempts when run in loop. Defaults to {DEFAULT_TIMEOUT}.")
+    parser.add_argument("--run-in-loop", action="store_true", help="Utility will run infinitely. You may stop it by 'cntrl+c'")
     parser.add_argument("--log-level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], help="Set the logging level (default: INFO)")
 
     args = parser.parse_args()
 
-    client = Client(auth_data=args.auth_data, timeout=args.timeout, log_level=args.log_level)
-    output = client.upload(target=args.path, show_progress=args.progress, recursive=args.recursive, threads=args.threads, force_upload=args.force_upload, delete_from_host=args.delete_from_host)
-    print(output)
+    while True:
+        client = Client(auth_data=args.auth_data, timeout=args.timeout, log_level=args.log_level)
+        output = client.upload(target=args.path, show_progress=args.progress, recursive=args.recursive, threads=args.threads, force_upload=args.force_upload, delete_from_host=args.delete_from_host)
+        print(output)
+        if not args.run_in_loop:
+            break
+        print(f"All files processed. Next processing will start in {args.attempt_timeout}.")
+        time.sleep(args.attempt_timeout)

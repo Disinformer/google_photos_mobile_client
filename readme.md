@@ -63,6 +63,8 @@ options:
   --force-upload        Upload files regardless of their presence in Google Photos (determined by hash).
   --delete-from-host    Delete uploaded files from source path.
   --timeout TIMEOUT     Requests timeout, seconds. Defaults to 30.
+  --attempt-timeout     Timeout between processing attempts when run in loop.
+  --run-in-loop         Utility will run infinitely. You may stop it by 'cntrl + c'.
   --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level (default: INFO)
 ```
